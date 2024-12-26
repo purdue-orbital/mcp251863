@@ -1,0 +1,9 @@
+Table 4-1 (registers)
+
+page 70:
+	1.  The frequency of SCK has to be less than or equal to 85% of half the frequency of SYSCLK.
+		This ensures that the synchronization between SCK and SYSCLK works correctly.
+	2.  In order to minimize the Sleep current, the SDO pin of the MCP251863 device must not be
+		left floating while the device is in Sleep mode. This can be achieved by enabling a
+		pull-up or pull-down resistor inside the MCU on the pin that is connected to the SDO pin,
+		while the MCP251863 device is in Sleep mode.
