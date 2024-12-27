@@ -10,7 +10,7 @@ pub use C1TBC as TimeBaseCounter;
 pub struct C1TBC(u32);
 
 impl Register<4> for C1TBC {
-	const ADDR_16_BIT: u16 = 0x00C;
+	const ADDR_16_BIT: u16 = 0x010;
 
 	fn from_bytes(value: [u8; Self::SIZE]) -> Self {
 		Self(u32::from_le_bytes(value))
