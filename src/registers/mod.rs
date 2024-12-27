@@ -5,13 +5,16 @@ use crate::instruction::Instruction;
 
 pub mod c1con;
 pub mod c1nbtcfg;
+pub mod c1dbtcfg;
 
 // todo: maybe make this derivable with a macro
 /// This trait writes the SPI handling code for us for any size register at a given address
 pub trait Register<const S: usize>: Sized {
-	/// Register address
+	/// Register address as u16 (converted to u12 at compile time)
 	const ADDR_16_BIT: u16;
+	/// Register address as u12
 	const ADDR: u12 = u12::from_u16(Self::ADDR_16_BIT);
+	/// Size of `Self` in bytes
 	const SIZE: usize = S;
 
 	/// Convert from bytes to `Self`
@@ -74,8 +77,8 @@ pub trait Register<const S: usize>: Sized {
 
 
 /* Register impl template
-impl Register<4> for C1NBTCFG {
-	const ADDR_16_BIT: u16 = ________;
+impl Register<4> for _____ {
+	const ADDR_16_BIT: u16 = 0x___;
 
 	fn from_bytes(value: [u8; Self::SIZE]) -> Self {
 		Self::new_with_raw_value(u32::from_le_bytes(value))
