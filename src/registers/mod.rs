@@ -7,12 +7,14 @@ pub mod c1con;
 pub mod c1nbtcfg;
 pub mod c1dbtcfg;
 pub mod c1tdc;
+pub mod c1tbc;
 
 pub mod prelude {
 	pub use super::c1con::*;
 	pub use super::c1nbtcfg::*;
 	pub use super::c1dbtcfg::*;
 	pub use super::c1tdc::*;
+	pub use super::c1tbc::*;
 }
 
 // todo: maybe make this derivable with a macro
