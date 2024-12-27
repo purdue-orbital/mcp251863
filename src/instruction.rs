@@ -2,8 +2,6 @@ use bitbybit::{bitenum, bitfield};
 use arbitrary_int::u12;
 use embedded_hal::spi::{SpiDevice, Operation};
 
-use crate::MCP251863;
-
 /// ## See table 5-1 in datasheet
 #[derive(Debug)]
 #[bitenum(u4, exhaustive = true)]
@@ -58,30 +56,34 @@ impl Instruction {
 	pub const fn to_bytes(&self) -> [u8; 2] {
 		self.raw_value().to_le_bytes()
 	}
-}
 
+	pub fn read(bus: &mut impl SpiDevice, addr: u12, buf: &mut [u8]) -> Result<(), ()> {
+		bus.transaction(&mut [
+			Operation::Write(&Command::Read.with_address(addr).to_bytes()),
+			Operation::Read(buf)
+		]).unwrap(); // TODO!!! remove unwrap
 
-impl MCP251863 {
-	fn read_byte(bus: &mut impl SpiDevice, addr: u12) -> Option<u8> {
-		let mut buf = [0; 1];
+		Ok(())
+	}
+
+	pub fn read_crc(bus: &mut impl SpiDevice, addr: u12, buf: &mut [u8]) -> Result<(), ()> {
+		todo!();
 
 		bus.transaction(&mut [
 			Operation::Write(&Command::Read.with_address(addr).to_bytes()),
-			Operation::Read(&mut buf)
+			Operation::Read(buf)
 		]).unwrap(); // TODO!!! remove unwrap
 
-		Some(buf[0])
+		Ok(())
 	}
 
-	fn read_byte_crc(bus: &mut impl SpiDevice, addr: u12) -> Option<u8> {
-		todo!(); 
+	
+	pub fn write(bus: &mut impl SpiDevice, addr: u12, buf: &[u8]) -> Result<(), ()> {
+		bus.transaction(&mut [
+			Operation::Write(&Command::Read.with_address(addr).to_bytes()),
+			Operation::Write(buf)
+		]).unwrap(); // TODO!!! remove unwrap
 
-		let mut buf = [0; 1];
-
-		Some(buf[0])
-	}
-
-	fn write_byte_crc(bus: &mut impl SpiDevice, addr: u12, byte: u8) -> Result<(), ()> {
-		todo!()
+		Ok(())
 	}
 }
