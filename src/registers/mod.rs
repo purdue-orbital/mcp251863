@@ -71,3 +71,18 @@ pub trait Register<const S: usize>: Sized {
 		Ok(())
 	}
 }
+
+
+/* Register impl template
+impl Register<4> for C1NBTCFG {
+	const ADDR_16_BIT: u16 = ________;
+
+	fn from_bytes(value: [u8; Self::SIZE]) -> Self {
+		Self::new_with_raw_value(u32::from_le_bytes(value))
+	}
+
+	fn to_bytes(self) -> [u8; Self::SIZE] {
+		self.raw_value.to_le_bytes()
+	}
+}
+*/

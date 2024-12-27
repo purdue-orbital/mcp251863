@@ -31,4 +31,4 @@ impl Register<4> for C1NBTCFG {
 	fn to_bytes(self) -> [u8; Self::SIZE] {
 		self.raw_value.to_le_bytes()
 	}
-}g
+}
