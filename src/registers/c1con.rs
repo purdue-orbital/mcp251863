@@ -1,12 +1,11 @@
 use bitbybit::{bitenum, bitfield};
 use arbitrary_int::{u2, u5};
-use embedded_hal::spi::SpiDevice;
 
+use embedded_hal::spi::SpiDevice;
 use crate::MCP251863;
 
 use crate::registers::Register;
 
-// note: see CiCON register
 #[derive(Debug, PartialEq, Eq)]
 #[bitenum(u3, exhaustive = true)]
 pub enum OperationMode {
@@ -74,25 +73,27 @@ impl PartialEq for TransmitGap {
 	}
 }
 
+pub use C1CON as CANControlRegister; // make an alias for c1con
+
 /// Register 4-7, CAN Control Register
 #[bitfield(u32, default = 0b0000_0100_1001_1000_0000_0111_0110_0000)]
 pub struct C1CON {
 	#[bits(0..=4, rw)]
 	device_net_filter_bit_number_bits: u5,
 	
-	/// can only be modified in config mode
+	/// Can only be modified in config mode
 	#[bits(5..=5, rw)]
 	iso_crc_enable: bool,
 	
-	/// can only be modified in config mode
+	/// Can only be modified in config mode
 	#[bits(6..=6, rw)]
 	pxedis: bool,
 
-	/// can only be modified in config mode
+	/// Can only be modified in config mode
 	#[bits(8..=8, rw)]
 	wake_filter_enable: bool,
 
-	/// can only be modified in config mode
+	/// Can only be modified in config mode
 	#[bits(9..=10, rw)]
 	wake_filter: u2,
 
@@ -102,23 +103,23 @@ pub struct C1CON {
 	#[bits(12..=12, rw)]
 	bit_rate_switching_disable: bool,
 
-	/// can only be modified in config mode
+	/// Can only be modified in config mode
 	#[bits(16..=16, rw)]
 	restrict_retransmission_attempts: bool,
 
-	/// can only be modified in config mode
+	/// Can only be modified in config mode
 	#[bits(17..=17, rw)]
 	transmit_esi_in_gateway_mode: bool,
 
-	/// can only be modified in config mode
+	/// Can only be modified in config mode
 	#[bits(18..=18, rw)]
 	serr_2_lom: bool, // todo make enum?
 
-	/// can only be modified in config mode
+	/// Can only be modified in config mode
 	#[bits(19..=19, rw)]
 	store_in_transit_event_fifo: bool,
 
-	/// can only be modified in config mode
+	/// Can only be modified in config mode
 	#[bits(20..=20, rw)]
 	transmit_queue_enable: bool,
 
@@ -138,7 +139,9 @@ pub struct C1CON {
 
 impl MCP251863 {
 	pub fn set_operation_mode(&mut self, bus: &mut impl SpiDevice, mode: OperationMode) -> Result<(), ()> {
-		todo!()
+		CANControlRegister::modify_register_safe(bus, |reg| {
+			reg.with_requested_operation_mode(mode)
+		})
 	}
 }
 

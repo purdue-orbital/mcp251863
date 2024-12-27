@@ -4,6 +4,7 @@ use embedded_hal::spi::SpiDevice;
 use crate::instruction::Instruction;
 
 pub mod c1con;
+pub mod c1nbtcfg;
 
 // todo: maybe make this derivable with a macro
 /// This trait writes the SPI handling code for us for any size register at a given address
@@ -53,7 +54,16 @@ pub trait Register<const S: usize>: Sized {
 	}
 
 	/// Modify value of register using a closure. Uses a crc read and a safe write
-	fn modify_register_safe<F: Fn(Self) -> Self>(self, bus: &mut impl SpiDevice, f: F) ->  Result<(), ()> {
+	/// 
+	/// 
+	/// # Examples
+	/// 
+	/// ``` no_run
+	/// CANControlRegister::modify_register_safe(bus, |reg| {
+	/// 	reg.with_requested_operation_mode(mode)
+	/// })
+	/// ```
+	fn modify_register_safe<F: Fn(Self) -> Self>(bus: &mut impl SpiDevice, f: F) ->  Result<(), ()> {
 		let mut register = Self::get_register_crc(bus).unwrap();
 		register = f(register);
 
