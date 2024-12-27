@@ -73,7 +73,7 @@ impl PartialEq for TransmitGap {
 	}
 }
 
-pub use C1CON as CANControlRegister; // make an alias for c1con
+pub use C1CON as CANControl; // make an alias for c1con
 
 /// Register 4-7, CAN Control Register
 #[bitfield(u32, default = 0b0000_0100_1001_1000_0000_0111_0110_0000)]
@@ -139,7 +139,7 @@ pub struct C1CON {
 
 impl MCP251863 {
 	pub fn set_operation_mode(&mut self, bus: &mut impl SpiDevice, mode: OperationMode) -> Result<(), ()> {
-		CANControlRegister::modify_register_safe(bus, |reg| {
+		CANControl::modify_register_safe(bus, |reg| {
 			reg.with_requested_operation_mode(mode)
 		})
 	}

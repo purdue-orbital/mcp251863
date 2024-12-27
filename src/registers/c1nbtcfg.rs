@@ -3,6 +3,7 @@ use arbitrary_int::{u2, u5, u7};
 
 use crate::registers::Register;
 
+pub use C1NBTCFG as NominalBitTimeConfiguration;
 
 /// Register 4-8, Nominal Bit Time Configuration Register
 #[bitfield(u32, default = 0b0000_0000_0011_1110_0000_1111_0000_1111)]

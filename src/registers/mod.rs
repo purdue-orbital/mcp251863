@@ -59,7 +59,7 @@ pub trait Register<const S: usize>: Sized {
 	/// # Examples
 	/// 
 	/// ``` no_run
-	/// CANControlRegister::modify_register_safe(bus, |reg| {
+	/// CANControl::modify_register_safe(bus, |reg| {
 	/// 	reg.with_requested_operation_mode(mode)
 	/// })
 	/// ```
