@@ -22,7 +22,7 @@ pub struct C1NBTCFG {
 
 
 impl Register<4> for C1NBTCFG {
-	const ADDR_16_BIT: u16 = 0;
+	const ADDR_16_BIT: u16 = 4;
 
 	fn from_bytes(value: [u8; Self::SIZE]) -> Self {
 		Self::new_with_raw_value(u32::from_le_bytes(value))
