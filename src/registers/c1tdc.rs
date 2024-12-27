@@ -1,7 +1,7 @@
 use arbitrary_int::u6;
 use bitbybit::{bitfield, bitenum};
 
-use crate::registers::Register;
+use crate::impl_register;
 
 // #[derive(Debug)]
 #[bitenum(u2, exhaustive = true)]
@@ -13,6 +13,8 @@ pub enum TransmitterDelayCompensationMode {
 }
 
 pub use C1TDC as TransmitterDelayCompensation;
+
+impl_register!(C1TDC, 0x00c, 4, u32);
 
 /// Register 4-10, Transmitter Delay Compensation Register
 /// 
@@ -34,17 +36,4 @@ pub struct C1TDC {
 
 	#[bits(0..=5, rw)]
 	value: u6,
-}
-
-
-impl Register<4> for C1TDC {
-	const ADDR_16_BIT: u16 = 0x00C;
-
-	fn from_bytes(value: [u8; Self::SIZE]) -> Self {
-		Self::new_with_raw_value(u32::from_le_bytes(value))
-	}
-
-	fn to_bytes(self) -> [u8; Self::SIZE] {
-		self.raw_value.to_le_bytes()
-	}
 }

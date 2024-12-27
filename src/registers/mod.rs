@@ -22,14 +22,13 @@ pub mod prelude {
 	pub use super::c1tbc::*;
 	pub use super::c1tscon::*;
 	pub use super::c1vec::*;
-	
-	#[allow(dead_code)]
-	#[cfg(test)]
+
 	pub const ADDR_ARR: [u16; 6] = [
 		C1CON::ADDR_16_BIT,
 		C1NBTCFG::ADDR_16_BIT,
 		C1DBTCFG::ADDR_16_BIT,
 		C1TDC::ADDR_16_BIT,
+		C1TBC::ADDR_16_BIT,
 		C1TSCON::ADDR_16_BIT,
 		C1VEC::ADDR_16_BIT,
 	];
@@ -117,6 +116,25 @@ impl Register<4> for _____ {
 	}
 }
 */
+
+#[macro_export]
+macro_rules! impl_register {
+	($struct_name:ty, $addr:expr, $length:expr, $raw_type:ty) => {
+		use crate::registers::Register;
+
+		impl Register<$length> for $struct_name {
+			const ADDR_16_BIT: u16 = $addr;
+
+			fn from_bytes(value: [u8; Self::SIZE]) -> Self {
+				Self::new_with_raw_value(<$raw_type>::from_le_bytes(value))
+			}
+
+			fn to_bytes(self) -> [u8; Self::SIZE] {
+				self.raw_value.to_le_bytes()
+			}
+		}
+	};
+}
 
 #[cfg(test)]
 mod tests {

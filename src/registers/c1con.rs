@@ -4,7 +4,7 @@ use arbitrary_int::{u2, u5};
 use embedded_hal::spi::SpiDevice;
 use crate::MCP251863;
 
-use crate::registers::Register;
+use crate::impl_register;
 
 #[derive(Debug, PartialEq, Eq)]
 #[bitenum(u3, exhaustive = true)]
@@ -75,6 +75,8 @@ impl PartialEq for TransmitGap {
 
 pub use C1CON as CANControl; // make an alias for c1con
 
+impl_register!(C1CON, 0x000, 4, u32);
+
 /// Register 4-7, CAN Control Register
 #[bitfield(u32, default = 0b0000_0100_1001_1000_0000_0111_0110_0000)]
 pub struct C1CON {
@@ -142,17 +144,5 @@ impl MCP251863 {
 		CANControl::modify_register_safe(bus, |reg| {
 			reg.with_requested_operation_mode(mode)
 		})
-	}
-}
-
-impl Register<4> for C1CON {
-	const ADDR_16_BIT: u16 = 0x000;
-
-	fn from_bytes(value: [u8; Self::SIZE]) -> Self {
-		Self::new_with_raw_value(u32::from_le_bytes(value))
-	}
-
-	fn to_bytes(self) -> [u8; Self::SIZE] {
-		self.raw_value.to_le_bytes()
 	}
 }

@@ -1,9 +1,11 @@
 use arbitrary_int::{u4, u5};
 use bitbybit::bitfield;
 
-use crate::registers::Register;
+use crate::impl_register;
 
 pub use C1DBTCFG as DataBitTimeConfiguration;
+
+impl_register!(C1DBTCFG, 0x008, 4, u32);
 
 /// Register 4-9, Data Bit Time Configuration Register
 ///
@@ -21,16 +23,4 @@ pub struct C1DBTCFG {
 
 	#[bits(0..=3, rw)]
 	synchronization_jump_width: u4
-}
-
-impl Register<4> for C1DBTCFG {
-	const ADDR_16_BIT: u16 = 0x008;
-
-	fn from_bytes(value: [u8; Self::SIZE]) -> Self {
-		Self::new_with_raw_value(u32::from_le_bytes(value))
-	}
-
-	fn to_bytes(self) -> [u8; Self::SIZE] {
-		self.raw_value.to_le_bytes()
-	}
 }

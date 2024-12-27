@@ -1,9 +1,11 @@
 use bitbybit::bitfield;
 use arbitrary_int::u7;
 
-use crate::registers::Register;
+use crate::impl_register;
 
 pub use C1NBTCFG as NominalBitTimeConfiguration;
+
+impl_register!(C1NBTCFG, 0x04, 4, u32);
 
 /// Register 4-8, Nominal Bit Time Configuration Register
 /// 
@@ -21,17 +23,4 @@ pub struct C1NBTCFG {
 
 	#[bits(0..=6, rw)]
 	synchronization_jump_width: u7
-}
-
-
-impl Register<4> for C1NBTCFG {
-	const ADDR_16_BIT: u16 = 0x004;
-
-	fn from_bytes(value: [u8; Self::SIZE]) -> Self {
-		Self::new_with_raw_value(u32::from_le_bytes(value))
-	}
-
-	fn to_bytes(self) -> [u8; Self::SIZE] {
-		self.raw_value.to_le_bytes()
-	}
 }
