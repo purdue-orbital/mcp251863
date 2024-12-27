@@ -1,10 +1,13 @@
 use bitbybit::{bitenum, bitfield};
-use arbitrary_int::{u4, u12};
+use arbitrary_int::u12;
+use embedded_hal::spi::{SpiDevice, Operation};
+
+use crate::MCP251863;
 
 /// ## See table 5-1 in datasheet
 #[derive(Debug)]
 #[bitenum(u4, exhaustive = true)]
-enum Command {
+pub enum Command {
 	/// ## See 5.1.1 in datasheet
 	/// 
 	/// The RESET instruction should only be issued after the device enters Configuration mode. All
@@ -21,16 +24,16 @@ enum Command {
 	WriteSafe = 0b1100,
 
 	// these only exist to make the enum exhastive (so it can be used in `Instruction`)
-	NA01 = 1,
-	NA04 = 4,
-	NA05 = 5,
-	NA06 = 6,
-	NA07 = 7,
-	NA08 = 8,
-	NA09 = 9,
-	NA13 = 13,
-	NA14 = 14,
-	NA15 = 15,
+	_NA01 = 1,
+	_NA04 = 4,
+	_NA05 = 5,
+	_NA06 = 6,
+	_NA07 = 7,
+	_NA08 = 8,
+	_NA09 = 9,
+	_NA13 = 13,
+	_NA14 = 14,
+	_NA15 = 15,
 }
 
 impl Command {
@@ -54,5 +57,31 @@ pub struct Instruction {
 impl Instruction {
 	pub const fn to_bytes(&self) -> [u8; 2] {
 		self.raw_value().to_le_bytes()
+	}
+}
+
+
+impl MCP251863 {
+	fn read_byte(bus: &mut impl SpiDevice, addr: u12) -> Option<u8> {
+		let mut buf = [0; 1];
+
+		bus.transaction(&mut [
+			Operation::Write(&Command::Read.with_address(addr).to_bytes()),
+			Operation::Read(&mut buf)
+		]).unwrap(); // TODO!!! remove unwrap
+
+		Some(buf[0])
+	}
+
+	fn read_byte_crc(bus: &mut impl SpiDevice, addr: u12) -> Option<u8> {
+		todo!(); 
+
+		let mut buf = [0; 1];
+
+		Some(buf[0])
+	}
+
+	fn write_byte_crc(bus: &mut impl SpiDevice, addr: u12, byte: u8) -> Result<(), ()> {
+		todo!()
 	}
 }
