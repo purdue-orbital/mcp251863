@@ -3,11 +3,13 @@ use bitbybit::bitfield;
 
 use crate::registers::Register;
 
+pub use C1DBTCFG as DataBitTimeConfiguration;
+
 /// Register 4-9, Data Bit Time Configuration Register
 ///
 /// This register can only be modified in config mode.
 #[bitfield(u32, default = 0b0000_0000_0000_1110_0000_0011_0000_0011)]
-struct C1DBTCFG {
+pub struct C1DBTCFG {
 	#[bits(24..=31, rw)]
 	baud_rate_prescaler: u8,
 

@@ -6,6 +6,14 @@ use crate::instruction::Instruction;
 pub mod c1con;
 pub mod c1nbtcfg;
 pub mod c1dbtcfg;
+pub mod c1tdc;
+
+pub mod prelude {
+	pub use super::c1con::*;
+	pub use super::c1nbtcfg::*;
+	pub use super::c1dbtcfg::*;
+	pub use super::c1tdc::*;
+}
 
 // todo: maybe make this derivable with a macro
 /// This trait writes the SPI handling code for us for any size register at a given address
