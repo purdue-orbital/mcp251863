@@ -9,6 +9,7 @@ pub mod c1dbtcfg;
 pub mod c1tdc;
 pub mod c1tbc;
 pub mod c1tscon;
+pub mod c1vec;
 
 pub mod prelude {
 	#[allow(unused_imports)]
@@ -20,15 +21,17 @@ pub mod prelude {
 	pub use super::c1tdc::*;
 	pub use super::c1tbc::*;
 	pub use super::c1tscon::*;
+	pub use super::c1vec::*;
 	
 	#[allow(dead_code)]
 	#[cfg(test)]
-	pub const ADDR_ARR: [u16; 5] = [
+	pub const ADDR_ARR: [u16; 6] = [
 		C1CON::ADDR_16_BIT,
 		C1NBTCFG::ADDR_16_BIT,
 		C1DBTCFG::ADDR_16_BIT,
 		C1TDC::ADDR_16_BIT,
 		C1TSCON::ADDR_16_BIT,
+		C1VEC::ADDR_16_BIT,
 	];
 }
 
