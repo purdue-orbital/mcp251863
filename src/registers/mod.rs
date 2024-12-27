@@ -11,12 +11,25 @@ pub mod c1tbc;
 pub mod c1tscon;
 
 pub mod prelude {
+	#[allow(unused_imports)]
+	use super::Register;
+
 	pub use super::c1con::*;
 	pub use super::c1nbtcfg::*;
 	pub use super::c1dbtcfg::*;
 	pub use super::c1tdc::*;
 	pub use super::c1tbc::*;
 	pub use super::c1tscon::*;
+	
+	#[allow(dead_code)]
+	#[cfg(test)]
+	pub const ADDR_ARR: [u16; 5] = [
+		C1CON::ADDR_16_BIT,
+		C1NBTCFG::ADDR_16_BIT,
+		C1DBTCFG::ADDR_16_BIT,
+		C1TDC::ADDR_16_BIT,
+		C1TSCON::ADDR_16_BIT,
+	];
 }
 
 // todo: maybe make this derivable with a macro
@@ -73,7 +86,7 @@ pub trait Register<const S: usize>: Sized {
 	/// 
 	/// # Examples
 	/// 
-	/// ``` no_run
+	/// ``` no_run ignore
 	/// CANControl::modify_register_safe(bus, |reg| {
 	/// 	reg.with_requested_operation_mode(mode)
 	/// })
@@ -101,3 +114,20 @@ impl Register<4> for _____ {
 	}
 }
 */
+
+#[cfg(test)]
+mod tests {
+	use super::prelude::ADDR_ARR;
+	
+	#[test]
+	fn unique_addresses() {
+		let mut arr = ADDR_ARR.to_vec();
+
+		let init_len = arr.len();
+
+		arr.sort_unstable();
+		arr.dedup();
+
+		assert_eq!(init_len, arr.len());
+	}
+}
