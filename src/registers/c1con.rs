@@ -22,72 +22,7 @@ pub enum OperationMode {
 	RestrictedOperation = 7,
 }
 
-/// Register 4-7, byte 0
-#[bitfield(u8, default = 0b0110_0000)]
-pub struct C1CON0 {
-	#[bits(0..=4, rw)]
-	device_net_filter_bit_number_bits: u5,
-	
-	/// can only be modified in config mode
-	#[bits(5..=5, rw)]
-	iso_crc_enable: bool,
-	
-	/// can only be modified in config mode
-	#[bits(6..=6, rw)]
-	pxedis: bool,
-	
-	// other bits are ignored
-}
-
-/// Register 4-7, byte 1
-#[bitfield(u8, default = 0b0000_0111)]
-pub struct C1CON1 {
-	/// can only be modified in config mode
-	#[bits(0..=0, rw)]
-	wake_filter_enable: bool,
-
-	/// can only be modified in config mode
-	#[bits(1..=2, rw)]
-	wake_filter: u2,
-
-	#[bits(3..=3, r)]
-	busy: bool,
-
-	#[bits(4..=4, rw)]
-	bit_rate_switching_disable: bool
-
-	// other bits are ignored
-}
-
-/// Register 4-7, byte 2
-#[bitfield(u8, default = 0b1001_1000)]
-pub struct C1CON2 {
-	/// can only be modified in config mode
-	#[bits(0..=0, rw)]
-	restrict_retransmission_attempts: bool,
-
-	/// can only be modified in config mode
-	#[bits(1..=1, rw)]
-	transmit_esi_in_gateway_mode: bool,
-
-	/// can only be modified in config mode
-	#[bits(2..=2, rw)]
-	serr_2_lom: bool, // todo make enum?
-
-	/// can only be modified in config mode
-	#[bits(3..=3, rw)]
-	store_in_transit_event_fifo: bool,
-
-	/// can only be modified in config mode
-	#[bits(4..=4, rw)]
-	transmit_queue_enable: bool,
-
-	/// see note 2
-	#[bits(5..=7, r)]
-	operation_mode: OperationMode,
-}
-
-
+#[derive(Debug, Eq)]
 #[bitenum(u4, exhaustive = true)]
 pub enum TransmitGap {
 	NoDelay = 0,
@@ -110,16 +45,94 @@ pub enum TransmitGap {
 	_NA03 = 15,
 }
 
-/// Register 4-7, byte 3
-#[bitfield(u8, default = 0b0000_0100)]
-pub struct C1CON3 {
-	#[bits(0..=2, rw)]
+impl TransmitGap {
+	pub fn gap(&self) -> u16 {
+		match self {
+			TransmitGap::NoDelay => 0,
+			TransmitGap::Delay2 => 2,
+			TransmitGap::Delay4 => 4,
+			TransmitGap::Delay8 => 8,
+			TransmitGap::Delay16 => 16,
+			TransmitGap::Delay32 => 32,
+			TransmitGap::Delay64 => 64,
+			TransmitGap::Delay128 => 128,
+			TransmitGap::Delay256 => 256,
+			TransmitGap::Delay512 => 512,
+			TransmitGap::Delay1024 => 1024,
+			TransmitGap::Delay2048 => 2048,
+			TransmitGap::Delay4096 => 4096,
+			TransmitGap::_NA01 => 4096,
+			TransmitGap::_NA02 => 4096,
+			TransmitGap::_NA03 => 4096,
+		}
+	}
+}
+
+impl PartialEq for TransmitGap {
+	fn eq(&self, other: &Self) -> bool {
+		self.gap() == other.gap()
+	}
+}
+
+/// Register 4-7, CAN Control Register
+#[bitfield(u32, default = 0b0000_0100_1001_1000_0000_0111_0110_0000)]
+pub struct C1CON {
+	#[bits(0..=4, rw)]
+	device_net_filter_bit_number_bits: u5,
+	
+	/// can only be modified in config mode
+	#[bits(5..=5, rw)]
+	iso_crc_enable: bool,
+	
+	/// can only be modified in config mode
+	#[bits(6..=6, rw)]
+	pxedis: bool,
+
+	/// can only be modified in config mode
+	#[bits(8..=8, rw)]
+	wake_filter_enable: bool,
+
+	/// can only be modified in config mode
+	#[bits(9..=10, rw)]
+	wake_filter: u2,
+
+	#[bits(11..=11, r)]
+	busy: bool,
+
+	#[bits(12..=12, rw)]
+	bit_rate_switching_disable: bool,
+
+	/// can only be modified in config mode
+	#[bits(16..=16, rw)]
+	restrict_retransmission_attempts: bool,
+
+	/// can only be modified in config mode
+	#[bits(17..=17, rw)]
+	transmit_esi_in_gateway_mode: bool,
+
+	/// can only be modified in config mode
+	#[bits(18..=18, rw)]
+	serr_2_lom: bool, // todo make enum?
+
+	/// can only be modified in config mode
+	#[bits(19..=19, rw)]
+	store_in_transit_event_fifo: bool,
+
+	/// can only be modified in config mode
+	#[bits(20..=20, rw)]
+	transmit_queue_enable: bool,
+
+	/// see note 2
+	#[bits(21..=23, r)]
+	operation_mode: OperationMode,
+
+	#[bits(24..=26, rw)]
 	requested_operation_mode: OperationMode,
 
-	#[bits(3..=3, rw)]
+	#[bits(27..=27, rw)]
 	abort_pending_transmissions: bool,
 
-	#[bits(4..=7, rw)]
+	#[bits(28..=31, rw)]
 	transmit_gap: TransmitGap,
 }
 
@@ -129,47 +142,11 @@ impl MCP251863 {
 	}
 }
 
-impl Register<1> for C1CON0 {
+impl Register<4> for C1CON {
 	const ADDR_16_BIT: u16 = 0;
 
 	fn from_bytes(value: [u8; Self::SIZE]) -> Self {
-		Self::new_with_raw_value(u8::from_le_bytes(value))
-	}
-
-	fn to_bytes(self) -> [u8; Self::SIZE] {
-		self.raw_value.to_le_bytes()
-	}
-}
-
-impl Register<1> for C1CON1 {
-	const ADDR_16_BIT: u16 = 0;
-
-	fn from_bytes(value: [u8; Self::SIZE]) -> Self {
-		Self::new_with_raw_value(u8::from_le_bytes(value))
-	}
-
-	fn to_bytes(self) -> [u8; Self::SIZE] {
-		self.raw_value.to_le_bytes()
-	}
-}
-
-impl Register<1> for C1CON2 {
-	const ADDR_16_BIT: u16 = 0;
-
-	fn from_bytes(value: [u8; Self::SIZE]) -> Self {
-		Self::new_with_raw_value(u8::from_le_bytes(value))
-	}
-
-	fn to_bytes(self) -> [u8; Self::SIZE] {
-		self.raw_value.to_le_bytes()
-	}
-}
-
-impl Register<1> for C1CON3 {
-	const ADDR_16_BIT: u16 = 0;
-
-	fn from_bytes(value: [u8; Self::SIZE]) -> Self {
-		Self::new_with_raw_value(u8::from_le_bytes(value))
+		Self::new_with_raw_value(u32::from_le_bytes(value))
 	}
 
 	fn to_bytes(self) -> [u8; Self::SIZE] {
