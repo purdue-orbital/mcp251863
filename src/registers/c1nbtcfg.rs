@@ -3,9 +3,7 @@ use arbitrary_int::u7;
 
 use crate::impl_register;
 
-pub use C1NBTCFG as NominalBitTimeConfiguration;
-
-impl_register!(C1NBTCFG, 0x04, 4, u32);
+impl_register!(C1NBTCFG, NominalBitTimeConfiguration, 0x04, 4, u32);
 
 /// Register 4-8, Nominal Bit Time Configuration Register
 /// 

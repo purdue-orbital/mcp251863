@@ -3,9 +3,7 @@ use bitbybit::bitfield;
 
 use crate::impl_register;
 
-pub use C1DBTCFG as DataBitTimeConfiguration;
-
-impl_register!(C1DBTCFG, 0x008, 4, u32);
+impl_register!(C1DBTCFG, DataBitTimeConfiguration, 0x008, 4, u32);
 
 /// Register 4-9, Data Bit Time Configuration Register
 ///

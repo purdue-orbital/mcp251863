@@ -3,9 +3,7 @@ use bitbybit::bitfield;
 
 use crate::impl_register;
 
-pub use C1TSCON as TimeStampController;
-
-impl_register!(C1TSCON, 0x014, 4, u32);
+impl_register!(C1TSCON, TimeStampController, 0x014, 4, u32);
 
 #[bitfield(u32, default = 0)]
 pub struct C1TSCON {

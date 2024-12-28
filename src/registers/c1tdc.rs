@@ -12,9 +12,7 @@ pub enum TransmitterDelayCompensationMode {
 	_NA01 = 3
 }
 
-pub use C1TDC as TransmitterDelayCompensation;
-
-impl_register!(C1TDC, 0x00c, 4, u32);
+impl_register!(C1TDC, TransmitterDelayCompensation, 0x00c, 4, u32);
 
 /// Register 4-10, Transmitter Delay Compensation Register
 /// 

@@ -73,9 +73,7 @@ impl PartialEq for TransmitGap {
 	}
 }
 
-pub use C1CON as CANControl; // make an alias for c1con
-
-impl_register!(C1CON, 0x000, 4, u32);
+impl_register!(C1CON, CANControl, 0x000, 4, u32);
 
 /// Register 4-7, CAN Control Register
 #[bitfield(u32, default = 0b0000_0100_1001_1000_0000_0111_0110_0000)]

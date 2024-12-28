@@ -10,6 +10,8 @@ pub mod c1tdc;
 pub mod c1tbc;
 pub mod c1tscon;
 pub mod c1vec;
+// todo c1int
+pub mod c1rxif;
 
 pub mod prelude {
 	#[allow(unused_imports)]
@@ -23,7 +25,7 @@ pub mod prelude {
 	pub use super::c1tscon::*;
 	pub use super::c1vec::*;
 
-	pub const ADDR_ARR: [u16; 6] = [
+	pub const ADDR_ARR: [u16; 7] = [
 		C1CON::ADDR_16_BIT,
 		C1NBTCFG::ADDR_16_BIT,
 		C1DBTCFG::ADDR_16_BIT,
@@ -119,8 +121,9 @@ impl Register<4> for _____ {
 
 #[macro_export]
 macro_rules! impl_register {
-	($struct_name:ty, $addr:expr, $length:expr, $raw_type:ty) => {
+	($struct_name:ty, $export_name:ident, $addr:expr, $length:expr, $raw_type:ty) => {
 		use crate::registers::Register;
+		pub use $struct_name as $export_name;
 
 		impl Register<$length> for $struct_name {
 			const ADDR_16_BIT: u16 = $addr;
