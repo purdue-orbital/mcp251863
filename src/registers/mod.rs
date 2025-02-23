@@ -3,6 +3,15 @@ use embedded_hal::spi::SpiDevice;
 
 use crate::instruction::Instruction;
 
+// specific registers
+pub mod osc;
+pub mod iocon;
+pub mod crc;
+pub mod ecccon;
+pub mod eccstat;
+pub mod devid;
+
+// CAN FD controller registers
 pub mod c1con;
 pub mod c1nbtcfg;
 pub mod c1dbtcfg;
@@ -10,13 +19,40 @@ pub mod c1tdc;
 pub mod c1tbc;
 pub mod c1tscon;
 pub mod c1vec;
-// todo c1int
+pub mod c1int;
 pub mod c1rxif;
+pub mod c1rxovif;
+pub mod c1txif;
+pub mod c1txatif;
+pub mod c1txreq;
+pub mod c1trec;
+pub mod c1bdiag0;
+pub mod c1bdiag1;
+pub mod c1tefcon;
+pub mod c1tefsta;
+pub mod c1tefua;
+pub mod c1txqcon;
+pub mod c1txqua;
+pub mod c1fifocon;
+pub mod c1fifosta;
+pub mod c1fifoua;
+pub mod c1fltcon;
+pub mod c1fltobj;
+pub mod c1mask;
 
 pub mod prelude {
 	#[allow(unused_imports)]
 	use super::Register;
 
+	// specific egisters
+	pub use super::osc::*;
+	pub use super::iocon::*;
+	pub use super::crc::*;
+	pub use super::ecccon::*;
+	pub use super::eccstat::*;
+	pub use super::devid::*;
+
+	// CAN FD controller registers
 	pub use super::c1con::*;
 	pub use super::c1nbtcfg::*;
 	pub use super::c1dbtcfg::*;
@@ -24,6 +60,25 @@ pub mod prelude {
 	pub use super::c1tbc::*;
 	pub use super::c1tscon::*;
 	pub use super::c1vec::*;
+	pub use super::c1int::*;
+	pub use super::c1rxovif::*;
+	pub use super::c1txif::*;
+	pub use super::c1txatif::*;
+	pub use super::c1txreq::*;
+	pub use super::c1trec::*;
+	pub use super::c1bdiag0::*;
+	pub use super::c1bdiag1::*;
+	pub use super::c1tefcon::*;
+	pub use super::c1tefsta::*;
+	pub use super::c1tefua::*;
+	pub use super::c1txqcon::*;
+	pub use super::c1txqua::*;
+	pub use super::c1fifocon::*;
+	pub use super::c1fifosta::*;
+	pub use super::c1fifoua::*;
+	pub use super::c1fltcon::*;
+	pub use super::c1fltobj::*;
+	pub use super::c1mask::*;
 
 	pub const ADDR_ARR: [u16; 7] = [
 		C1CON::ADDR_16_BIT,
@@ -119,13 +174,14 @@ impl Register<4> for _____ {
 }
 */
 
+
+// register struct name, nicer name, address, register size, register type
 #[macro_export]
 macro_rules! impl_register {
 	($struct_name:ty, $export_name:ident, $addr:expr, $length:expr, $raw_type:ty) => {
-		use crate::registers::Register;
 		pub use $struct_name as $export_name;
 
-		impl Register<$length> for $struct_name {
+		impl crate::registers::Register<$length> for $struct_name {
 			const ADDR_16_BIT: u16 = $addr;
 
 			fn from_bytes(value: [u8; Self::SIZE]) -> Self {

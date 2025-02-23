@@ -2,7 +2,9 @@ use bitbybit::{bitenum, bitfield};
 use arbitrary_int::{u2, u5};
 
 use embedded_hal::spi::SpiDevice;
-use crate::MCP251863;
+use crate::{MCP251863, registers::Register};
+
+
 
 use crate::impl_register;
 
