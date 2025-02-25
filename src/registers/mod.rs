@@ -1,7 +1,7 @@
 use arbitrary_int::u12;
 use embedded_hal::spi::SpiDevice;
 
-use crate::instruction::Instruction;
+use crate::instruction::{Instruction, InstructionError};
 
 // specific registers
 pub mod osc;
@@ -41,8 +41,7 @@ pub mod c1fltobj;
 pub mod c1mask;
 
 pub mod prelude {
-	#[allow(unused_imports)]
-	use super::Register;
+	pub use super::Register;
 
 	// specific egisters
 	pub use super::osc::*;
@@ -108,39 +107,87 @@ pub trait Register<const S: usize>: Sized {
 	fn to_bytes(self) -> [u8; S];
 
 	/// Get value of the register
-	fn get_register(bus: &mut impl SpiDevice) -> Result<Self, ()> {
+	fn get_register(bus: &mut impl SpiDevice) -> Result<Self, InstructionError> {
 		let mut buf = [0; S];
 
-		Instruction::read(bus, Self::ADDR, &mut buf).unwrap();
-
-		Ok(Self::from_bytes(buf))
+		match Instruction::read_crc(bus, Self::ADDR, &mut buf) {
+			Ok(_) => Ok(Self::from_bytes(buf)),
+			Err(e) => Err(e),
+		}
 	}
 
-	/// Get value of register with CRC
-	fn get_register_crc(bus: &mut impl SpiDevice) -> Result<Self, ()> {
-		todo!()
+	/// Read single byte in the register (bytenum is 0 indexed, little endian)
+	fn read_register_byte(bus: &mut impl SpiDevice, bytenum: u8) -> Result<u8, InstructionError> {
+		let mut buf = [0; 1];
+
+		match Instruction::read(bus, Self::ADDR + u12::from_u8(bytenum), &mut buf) {
+			Ok(_) => Ok(buf[0]),
+			Err(e) => Err(e),
+		}
 	}
 
-	/// Set value of register
-	fn set_register(self, bus: &mut impl SpiDevice) -> Result<(), ()> {
+	/// Read value of register with CRC
+	fn read_register_crc(bus: &mut impl SpiDevice) -> Result<Self, InstructionError> {
+		let mut buf = [0; S];
+
+		match Instruction::read_crc(bus, Self::ADDR, &mut buf) {
+			Ok(_) => Ok(Self::from_bytes(buf)),
+			Err(e) => Err(e),
+		}
+	}
+
+	/// Read single byte in the register with CRC (bytenum is 0 indexed, little endian)
+	fn read_register_byte_crc(bus: &mut impl SpiDevice, bytenum: u8) -> Result<u8, InstructionError> {
+		let mut buf = [0; 1];
+
+		match Instruction::read_crc(bus, Self::ADDR + u12::from_u8(bytenum), &mut buf) {
+			Ok(_) => Ok(buf[0]),
+			Err(e) => Err(e),
+		}
+	}
+
+	/// Write value of register
+	fn write_register(self, bus: &mut impl SpiDevice) -> Result<(), InstructionError> {
 		let buf = self.to_bytes();
 
-		Instruction::write(bus, Self::ADDR, &buf).unwrap();
-
-		Ok(())
+		match Instruction::write(bus, Self::ADDR, &buf) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        }
 	}
 
-	/// Set value of register with CRC (see also `set_register_safe`)
-	fn set_register_crc(self, bus: &mut impl SpiDevice) -> Result<(), ()> {
-		todo!()
+    /// Write single byte in register (bytenum is 0 indexed, little endian)
+    fn write_register_byte(self, bus: &mut impl SpiDevice, bytenum: u8) -> Result<(), InstructionError> {
+        let buf = self.to_bytes();
+
+        match Instruction::write(bus, Self::ADDR + u12::from_u8(bytenum), &[buf[bytenum as usize]]) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
+
+	/// Write value of register with CRC (see also `write_register_safe`)
+	fn write_register_crc(self, bus: &mut impl SpiDevice) -> Result<(), InstructionError> {
+		let buf = self.to_bytes();
+
+		match Instruction::write_crc(bus, Self::ADDR, &buf) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        }
 	}
 
-	/// Set value of register with a safe write (see also `set_register_crc`)
-	fn set_register_safe(self, bus: &mut impl SpiDevice) -> Result<(), ()> {
-		todo!()
+	/// Write value of register with a safe write. safe writing only writes one byte at a time
+    /// (see also `write_register_crc`)
+	fn write_register_safe(self, bus: &mut impl SpiDevice, bytenum: u8) -> Result<(), InstructionError> {
+		let buf = self.to_bytes();
+
+        match Instruction::write_safe(bus, Self::ADDR + u12::from_u8(bytenum), &[buf[bytenum as usize]]) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        }
 	}
 
-	/// Modify value of register using a closure. Uses a crc read and a safe write
+	/// Modify value of register using a closure. Uses a crc read/write
 	/// 
 	/// 
 	/// # Examples
@@ -150,11 +197,11 @@ pub trait Register<const S: usize>: Sized {
 	/// 	reg.with_requested_operation_mode(mode)
 	/// })
 	/// ```
-	fn modify_register_safe<F: Fn(Self) -> Self>(bus: &mut impl SpiDevice, f: F) ->  Result<(), ()> {
-		let mut register = Self::get_register_crc(bus).unwrap();
+	fn modify_register_crc<F: Fn(Self) -> Self>(bus: &mut impl SpiDevice, f: F) ->  Result<(), InstructionError> {
+		let mut register = Self::read_register_crc(bus).unwrap();
 		register = f(register);
 
-		register.set_register_safe(bus).unwrap();
+		register.write_register_crc(bus).unwrap();
 		Ok(())
 	}
 }

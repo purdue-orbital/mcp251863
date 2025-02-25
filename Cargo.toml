@@ -7,3 +7,4 @@ edition = "2021"
 arbitrary-int = "1.3.0"
 bitbybit = { version = "1.3.3", default-features = false }
 embedded-hal = "1.0.0"
+crc = "3.2.1"

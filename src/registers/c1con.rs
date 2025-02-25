@@ -4,8 +4,7 @@ use arbitrary_int::{u2, u5};
 use embedded_hal::spi::SpiDevice;
 use crate::{MCP251863, registers::Register};
 
-
-
+use crate::instruction::InstructionError;
 use crate::impl_register;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -140,8 +139,8 @@ pub struct C1CON {
 }
 
 impl MCP251863 {
-	pub fn set_operation_mode(&mut self, bus: &mut impl SpiDevice, mode: OperationMode) -> Result<(), ()> {
-		CANControl::modify_register_safe(bus, |reg| {
+	pub fn set_operation_mode(&mut self, bus: &mut impl SpiDevice, mode: OperationMode) -> Result<(), InstructionError> {
+		CANControl::modify_register_crc(bus, |reg| {
 			reg.with_requested_operation_mode(mode)
 		})
 	}

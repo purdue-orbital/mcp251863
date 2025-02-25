@@ -5,6 +5,10 @@ use crate::impl_register;
 
 impl_register!(C1VEC, InterruptCode, 0x018, 4, u32);
 
+pub enum RecieveInterruptFlagCode {
+	NoInterrupt = 0b100000,
+}
+
 /// Register 4-13, Interrupt Code Register
 #[bitfield(u32, default = 0b0100_0000_0100_0000_0000_0000_0000_0000)]
 pub struct C1VEC {
