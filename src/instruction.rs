@@ -1,6 +1,27 @@
 use bitbybit::{bitenum, bitfield};
-use arbitrary_int::u12;
-use embedded_hal::spi::{SpiDevice, Operation};
+use arbitrary_int::{u12, u24};
+use embedded_hal::spi::{SpiDevice, Operation, Error, ErrorKind};
+
+use crate::registers::{c1int::Interrupt, Register};
+
+use crc;
+const CRC_ALGO: crc::Crc<u16> = crc::Crc::<u16>::new(&crc::CRC_16_USB);
+const C1INT_SPICRCIF_MASK: u8 = 0b0000_0010;
+
+#[derive(Clone, Copy, Debug)]
+pub enum InstructionError {
+	External(ErrorKind),
+	CRCError,
+}
+
+impl Error for InstructionError {
+	fn kind(&self) -> ErrorKind {
+		match self {
+			InstructionError::External(kind) => *kind,
+			InstructionError::CRCError => ErrorKind::Other,
+		}
+	}
+}
 
 /// ## See table 5-1 in datasheet
 #[derive(Debug)]
@@ -57,33 +78,208 @@ impl Instruction {
 		self.raw_value().to_le_bytes()
 	}
 
-	pub fn read(bus: &mut impl SpiDevice, addr: u12, buf: &mut [u8]) -> Result<(), ()> {
-		bus.transaction(&mut [
-			Operation::Write(&Command::Read.with_address(addr).to_bytes()),
-			Operation::Read(buf)
-		]).unwrap(); // TODO!!! remove unwrap
-
-		Ok(())
+	pub fn reset(bus: &mut impl SpiDevice, addr: u12) -> Result<(), InstructionError> {
+		match bus.transaction(&mut [
+			Operation::Write(&Command::Reset.with_address(addr).to_bytes())
+		]) {
+			Ok(_) => Ok(()),
+			Err(e) => Err(InstructionError::External(e.kind())),
+		}
 	}
 
-	pub fn read_crc(bus: &mut impl SpiDevice, addr: u12, buf: &mut [u8]) -> Result<(), ()> {
-		todo!();
+	pub fn read(bus: &mut impl SpiDevice, addr: u12, buf: &mut [u8]) -> Result<(), InstructionError> {
 
-		bus.transaction(&mut [
+		match bus.transaction(&mut [
 			Operation::Write(&Command::Read.with_address(addr).to_bytes()),
 			Operation::Read(buf)
-		]).unwrap(); // TODO!!! remove unwrap
-
-		Ok(())
+		]) {
+			Ok(_) => Ok(()),
+			Err(e) => Err(InstructionError::External(e.kind())),
+		}
 	}
 
-	
-	pub fn write(bus: &mut impl SpiDevice, addr: u12, buf: &[u8]) -> Result<(), ()> {
-		bus.transaction(&mut [
-			Operation::Write(&Command::Read.with_address(addr).to_bytes()),
+	pub fn write(bus: &mut impl SpiDevice, addr: u12, buf: &[u8]) -> Result<(), InstructionError> {
+
+		match bus.transaction(&mut [
+			Operation::Write(&Command::Write.with_address(addr).to_bytes()),
 			Operation::Write(buf)
-		]).unwrap(); // TODO!!! remove unwrap
-
-		Ok(())
+		]) {
+			Ok(_) => Ok(()),
+			Err(e) => Err(InstructionError::External(e.kind())),
+		}
 	}
+
+	pub fn read_crc(bus: &mut impl SpiDevice, addr: u12, buf: &mut [u8]) -> Result<(), InstructionError> {
+
+		let cmd = Command::ReadCRC.with_address(addr).to_bytes();
+		let num_bytes = buf.len() as u8;
+
+		let read_result = bus.transaction(&mut [
+			Operation::Write(&cmd),
+			Operation::Write(&[num_bytes]),
+			Operation::Read(buf)
+		]);
+
+		// check recieved crc checksum for errors
+		// checksum calculated on command, address, data length, data (datasheet pg 70)
+		let crc_errors_present = {
+			let mut crc_digest = CRC_ALGO.digest();
+			crc_digest.update(&cmd);
+			crc_digest.update(&[num_bytes]);
+			crc_digest.update(&buf[..(buf.len() - 2)]);
+			u16::from_le_bytes([buf[buf.len() - 2], buf[buf.len() - 1]]) != crc_digest.finalize()
+		};
+
+		if crc_errors_present {
+			Err(InstructionError::CRCError)
+		} else {
+			match read_result {
+				Ok(_) => Ok(()),
+				Err(e) => Err(InstructionError::External(e.kind())),
+			}
+		}
+	}
+
+	pub fn write_crc(bus: &mut impl SpiDevice, addr: u12, buf: &[u8]) -> Result<(), InstructionError> {
+
+		// write data and crc
+		let cmd = Command::WriteCRC.with_address(addr).to_bytes();
+		let num_bytes = buf.len() as u8;
+
+		let checksum = {
+			let mut crc_digest = CRC_ALGO.digest();
+			crc_digest.update(&cmd);
+			crc_digest.update(&[num_bytes]);
+			crc_digest.update(buf);
+			crc_digest.finalize().to_le_bytes()
+		};
+
+		let read_crc_interrupt_cmd = Command::ReadCRC.with_address(Interrupt::ADDR + u12::from(1u8)).to_bytes();
+		let mut crc_interrupt_buf = [0u8; 3];
+
+		let write_result = bus.transaction(&mut [
+			// Write data to device
+			Operation::Write(&cmd),
+			Operation::Write(&[num_bytes]),
+			Operation::Write(buf),
+			Operation::Write(&checksum),
+
+			// read the CRC register
+			Operation::Write(&read_crc_interrupt_cmd),
+			Operation::Write(&[1u8]), // number of bytes to read
+			Operation::Read(&mut crc_interrupt_buf), // interrupt register + checksum
+		]);
+		
+		// check recieved crc checksuhm for errors
+		// checksum calculated on command, address, data length, data (datasheet pg 70)
+		let crc_errors_present = {
+			let mut crc_digest = CRC_ALGO.digest();
+			crc_digest.update(&read_crc_interrupt_cmd);
+			crc_digest.update(&[1u8]);
+			crc_digest.update(&crc_interrupt_buf[..1]);
+			u16::from_le_bytes([crc_interrupt_buf[1], crc_interrupt_buf[2]]) != crc_digest.finalize()
+		};
+
+		// check for errors when reading 
+		if crc_errors_present {
+			Err(InstructionError::CRCError)	
+		} 
+
+		// check if CRC interrupt is set
+		else if crc_interrupt_buf[0] & C1INT_SPICRCIF_MASK != 0 { // If set, clear the interrupt
+			match Self::try_clear_crc_interrupt(bus, crc_interrupt_buf[0], 5) {
+				Ok(_) => Err(InstructionError::CRCError),
+				Err(e) => Err(InstructionError::External(e.kind())),
+			}
+		}
+
+		// return result of bus transaction
+		else {
+			match write_result {
+				Ok(_) => Ok(()),
+				Err(e) => Err(InstructionError::External(e.kind())),
+			}
+		}
+	}
+
+	/// clears the CRC interrupt flag in the C1INT register, tries again if it encounters a CRCError
+	fn try_clear_crc_interrupt(bus: &mut impl SpiDevice, mut crc_interrupt_buf: u8, max_tries: u8) -> Result<(), InstructionError> {
+
+		crc_interrupt_buf ^= C1INT_SPICRCIF_MASK; // clear the spicrcif interrupt
+
+		for _ in 0..max_tries {
+			let interrupt_clear_result = Self::write_safe(bus, Interrupt::ADDR + u12::from_u8(1), &[crc_interrupt_buf]);
+
+			match interrupt_clear_result {
+				Ok(_) => return Ok(()),
+				Err(e) => match e {
+					InstructionError::CRCError => continue,
+					_ => return Err(e),
+				}
+			}
+		}
+
+		Err(InstructionError::CRCError)
+	}
+
+	pub fn write_safe(bus: &mut impl SpiDevice, addr: u12, buf: &[u8; 1]) -> Result<(), InstructionError> {
+
+		// write data and crc
+		let cmd = Command::WriteCRC.with_address(addr).to_bytes();
+
+		// checksum calculated on command, address, and data
+		let checksum = {
+			let mut crc_digest = CRC_ALGO.digest();
+			crc_digest.update(&cmd);
+			crc_digest.update(buf);
+			crc_digest.finalize().to_le_bytes()
+		};
+
+		let read_crc_interrupt_cmd = Command::ReadCRC.with_address(Interrupt::ADDR + u12::from(1u8)).to_bytes();
+		let mut crc_interrupt_buf = [0u8; 3];
+
+		let write_result = bus.transaction(&mut [
+			// Write data to device
+			Operation::Write(&cmd),
+			Operation::Write(buf),
+			Operation::Write(&checksum),
+
+			// read the CRC register
+			Operation::Write(&read_crc_interrupt_cmd),
+			Operation::Write(&[1u8]), // number of bytes to read
+			Operation::Read(&mut crc_interrupt_buf), // interrupt register + checksum
+		]);
+		
+		// check recieved crc checksum for errors
+		let crc_errors_present = {
+			let mut crc_digest = CRC_ALGO.digest();
+			crc_digest.update(&read_crc_interrupt_cmd);
+			crc_digest.update(&[1u8]);
+			crc_digest.update(&crc_interrupt_buf[..1]);
+			u16::from_le_bytes([crc_interrupt_buf[1], crc_interrupt_buf[2]]) != crc_digest.finalize()
+		};
+
+		// check for errors when reading 
+		if crc_errors_present {
+			Err(InstructionError::CRCError)	
+		} 
+
+		// check if CRC interrupt is set
+		else if crc_interrupt_buf[0] & C1INT_SPICRCIF_MASK != 0 { // If set, clear the interrupt
+			match Self::try_clear_crc_interrupt(bus, crc_interrupt_buf[0], 5) {
+				Ok(_) => Err(InstructionError::CRCError),
+				Err(e) => Err(InstructionError::External(e.kind())),
+			}
+		}
+
+		// return result of bus transaction
+		else {
+			match write_result {
+				Ok(_) => Ok(()),
+				Err(e) => Err(InstructionError::External(e.kind())),
+			}
+		}
+	}
+	
+	
 }
