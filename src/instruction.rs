@@ -3,7 +3,11 @@ use arbitrary_int::{u12, u24};
 use embedded_hal::spi::{SpiDevice, Operation, Error, ErrorKind};
 
 use crate::registers::{c1int::Interrupt, Register};
-
+use crate::can::message_objects::{
+    TransmitMessageObject,
+    TransmitMessageWord0,
+    TransmitMessageWord1,
+};
 use crc;
 const CRC_ALGO: crc::Crc<u16> = crc::Crc::<u16>::new(&crc::CRC_16_USB);
 const C1INT_SPICRCIF_MASK: u8 = 0b0000_0010;
@@ -78,6 +82,7 @@ impl Instruction {
 		self.raw_value().to_le_bytes()
 	}
 
+	/// sends a reset command to the CAN controller
 	pub fn reset(bus: &mut impl SpiDevice, addr: u12) -> Result<(), InstructionError> {
 		match bus.transaction(&mut [
 			Operation::Write(&Command::Reset.with_address(addr).to_bytes())
@@ -87,6 +92,7 @@ impl Instruction {
 		}
 	}
 
+	/// reads from the CAN controller
 	pub fn read(bus: &mut impl SpiDevice, addr: u12, buf: &mut [u8]) -> Result<(), InstructionError> {
 
 		match bus.transaction(&mut [
@@ -98,6 +104,7 @@ impl Instruction {
 		}
 	}
 
+	/// writes to the CAN controller
 	pub fn write(bus: &mut impl SpiDevice, addr: u12, buf: &[u8]) -> Result<(), InstructionError> {
 
 		match bus.transaction(&mut [
@@ -109,6 +116,7 @@ impl Instruction {
 		}
 	}
 
+	/// Reads from CAN controller, and checks the CRC for errors
 	pub fn read_crc(bus: &mut impl SpiDevice, addr: u12, buf: &mut [u8]) -> Result<(), InstructionError> {
 
 		let cmd = Command::ReadCRC.with_address(addr).to_bytes();
@@ -140,6 +148,7 @@ impl Instruction {
 		}
 	}
 
+	/// Writes to CAN controller, and checks the interrupt register for CRC errors
 	pub fn write_crc(bus: &mut impl SpiDevice, addr: u12, buf: &[u8]) -> Result<(), InstructionError> {
 
 		// write data and crc
@@ -157,14 +166,15 @@ impl Instruction {
 		let read_crc_interrupt_cmd = Command::ReadCRC.with_address(Interrupt::ADDR + u12::from(1u8)).to_bytes();
 		let mut crc_interrupt_buf = [0u8; 3];
 
+		// Write data to device
 		let write_result = bus.transaction(&mut [
-			// Write data to device
 			Operation::Write(&cmd),
 			Operation::Write(&[num_bytes]),
 			Operation::Write(buf),
 			Operation::Write(&checksum),
+		]);
 
-			// read the CRC register
+		let crc_check_result = bus.transaction(&mut [
 			Operation::Write(&read_crc_interrupt_cmd),
 			Operation::Write(&[1u8]), // number of bytes to read
 			Operation::Read(&mut crc_interrupt_buf), // interrupt register + checksum
@@ -187,17 +197,18 @@ impl Instruction {
 
 		// check if CRC interrupt is set
 		else if crc_interrupt_buf[0] & C1INT_SPICRCIF_MASK != 0 { // If set, clear the interrupt
-			match Self::try_clear_crc_interrupt(bus, crc_interrupt_buf[0], 5) {
-				Ok(_) => Err(InstructionError::CRCError),
-				Err(e) => Err(InstructionError::External(e.kind())),
-			}
+			Self::try_clear_crc_interrupt(bus, crc_interrupt_buf[0], 5)?;
+			Err(InstructionError::CRCError)
 		}
 
 		// return result of bus transaction
 		else {
 			match write_result {
-				Ok(_) => Ok(()),
 				Err(e) => Err(InstructionError::External(e.kind())),
+				Ok(_) => match crc_check_result {
+					Err(e) => Err(InstructionError::External(e.kind())),
+					Ok(_) => Ok(()),
+				},
 			}
 		}
 	}
@@ -222,6 +233,7 @@ impl Instruction {
 		Err(InstructionError::CRCError)
 	}
 
+	/// Writes a byte to CAN controller, and checks the interrupt register for CRC errors
 	pub fn write_safe(bus: &mut impl SpiDevice, addr: u12, buf: &[u8; 1]) -> Result<(), InstructionError> {
 
 		// write data and crc
@@ -243,8 +255,9 @@ impl Instruction {
 			Operation::Write(&cmd),
 			Operation::Write(buf),
 			Operation::Write(&checksum),
+		]);
 
-			// read the CRC register
+		let crc_check_result = bus.transaction(&mut [
 			Operation::Write(&read_crc_interrupt_cmd),
 			Operation::Write(&[1u8]), // number of bytes to read
 			Operation::Read(&mut crc_interrupt_buf), // interrupt register + checksum
@@ -266,20 +279,47 @@ impl Instruction {
 
 		// check if CRC interrupt is set
 		else if crc_interrupt_buf[0] & C1INT_SPICRCIF_MASK != 0 { // If set, clear the interrupt
-			match Self::try_clear_crc_interrupt(bus, crc_interrupt_buf[0], 5) {
-				Ok(_) => Err(InstructionError::CRCError),
-				Err(e) => Err(InstructionError::External(e.kind())),
-			}
+			Self::try_clear_crc_interrupt(bus, crc_interrupt_buf[0], 5)?;
+			Err(InstructionError::CRCError)
 		}
 
 		// return result of bus transaction
 		else {
 			match write_result {
-				Ok(_) => Ok(()),
 				Err(e) => Err(InstructionError::External(e.kind())),
+				Ok(_) => match crc_check_result {
+					Err(e) => Err(InstructionError::External(e.kind())),
+					Ok(_) => Ok(()),
+				},
 			}
 		}
 	}
 	
+	/// Writes a transmit message object over spi
+	pub fn write_tx_message_object(bus: &mut impl SpiDevice, addr: u12, word0: TransmitMessageWord0, word1: TransmitMessageWord1, data: &[u8]) -> Result<(), InstructionError> {
+
+		match bus.transaction(&mut [
+			Operation::Write(&Command::Write.with_address(addr).to_bytes()),
+			Operation::Write(&word0.to_bytes()),
+			Operation::Write(&word1.to_bytes()),
+			Operation::Write(data),
+		]) {
+			Ok(_) => Ok(()),
+			Err(e) => Err(InstructionError::External(e.kind())),
+		}
+	}
+
 	
+	pub fn write_message_object_crc(bus: &mut impl SpiDevice, addr: u12, msg: &TransmitMessageObject) -> Result<(), InstructionError> {
+		todo!();
+		match bus.transaction(&mut [
+			Operation::Write(&Command::WriteCRC.with_address(addr).to_bytes()),
+			Operation::Write(&msg.word0.to_bytes()),
+			Operation::Write(&msg.word1.to_bytes()),
+			Operation::Write(msg.data),
+		]) {
+			Ok(_) => Ok(()),
+			Err(e) => Err(InstructionError::External(e.kind())),
+		}
+	}
 }

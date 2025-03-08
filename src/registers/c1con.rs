@@ -140,8 +140,18 @@ pub struct C1CON {
 
 impl MCP251863 {
 	pub fn set_operation_mode(&mut self, bus: &mut impl SpiDevice, mode: OperationMode) -> Result<(), InstructionError> {
-		CANControl::modify_register_crc(bus, |reg| {
-			reg.with_requested_operation_mode(mode)
-		})
+		match CANControl::modify_register_safe(
+			bus, 
+			|reg| {
+				reg.with_requested_operation_mode(mode)
+			},
+			3, // requested_operation_mode is the 4th byte of C1CON
+		) {
+			Err(e) => Err(e),
+			Ok(()) => {
+				self.mode = mode;
+				Ok(())
+			}
+		}
 	}
 }

@@ -204,6 +204,17 @@ pub trait Register<const S: usize>: Sized {
 		register.write_register_crc(bus).unwrap();
 		Ok(())
 	}
+
+	fn modify_register_safe<F: Fn(Self) -> Self>(bus: &mut impl SpiDevice, f: F, bytenum: u8) -> Result<(), InstructionError> {
+		let read_result = Self::read_register_crc(bus);
+		match read_result {
+			Ok(mut register) => {
+				register = f(register);
+				register.write_register_safe(bus, bytenum)
+			}
+			Err(e) => Err(e) 
+		}
+	}
 }
 
 
